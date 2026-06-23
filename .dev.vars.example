@@ -1,0 +1,9 @@
+# Copy to `.dev.vars` for `wrangler dev`. In production use `wrangler secret put`.
+# Generate strong random values, e.g.:
+#   node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+
+# Bearer the local collector presents on every evidence submission.
+INGEST_TOKEN="replace-with-32-bytes-base64url"
+
+# HMAC key the agent uses to sign short-lived repair-authorization tokens.
+REPAIR_SIGNING_KEY="replace-with-a-different-32-bytes-base64url"

@@ -1,0 +1,35 @@
+{
+  // Zero-knowledge git-forensics case-file agent.
+  // Secrets (NEVER commit): set with `wrangler secret put`
+  //   INGEST_TOKEN        — bearer the local collector presents to submit evidence
+  //   REPAIR_SIGNING_KEY  — HMAC key the agent uses to sign repair-authorization tokens
+  "name": "git-forensics-agent",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-05-05",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "durable_objects": {
+    "bindings": [
+      { "name": "ForensicCase", "class_name": "ForensicCaseAgent" }
+    ]
+  },
+
+  // Each Agent class needs its own SQLite migration entry. Never edit an old
+  // tag — add a new one (v2, v3, ...) for future classes.
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["ForensicCaseAgent"] }
+  ],
+
+  // Static dashboard. run_worker_first lets the Worker claim /agents/* and
+  // /health before falling through to the SPA shell.
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

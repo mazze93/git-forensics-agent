@@ -13,7 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "agents": "^0.2.0"
+    "agents": "^0.16.2"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250109.0",

@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Git Forensics — Case File</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --panel: #12151c;
+    --panel-2: #171b24;
+    --ink: #e7ecf3;
+    --muted: #8b95a7;
+    --line: #232938;
+    --teal: #5ccfcf;
+    --coral: #f07178;
+    --gold: #e3b341;
+    --radius: 10px;
+    --mono: ui-monospace, "JetBrains Mono", "DM Mono", "SFMono-Regular", Menlo, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height: 1.5;
+    padding: clamp(1rem, 3vw, 2.5rem);
+  }
+  a { color: var(--teal); }
+  header { display: flex; flex-wrap: wrap; gap: 1rem; align-items: baseline; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 1rem; }
+  h1 { font-size: 1.4rem; margin: 0; letter-spacing: .01em; }
+  h1 .mark { color: var(--teal); }
+  .sub { color: var(--muted); font-family: var(--mono); font-size: .8rem; }
+  fieldset { border: 1px solid var(--line); border-radius: var(--radius); margin: 1.25rem 0; padding: 1rem 1.1rem; background: var(--panel); }
+  legend { color: var(--muted); font-family: var(--mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; padding: 0 .4rem; }
+  label { display: block; font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: .3rem; }
+  input { width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: .55rem .65rem; font-family: var(--mono); font-size: .85rem; }
+  input:focus-visible, button:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .8rem; }
+  .row { display: flex; gap: .6rem; flex-wrap: wrap; align-items: end; }
+  button { background: var(--teal); color: #06262a; border: 0; border-radius: 8px; padding: .55rem .9rem; font-weight: 600; font-family: var(--sans); cursor: pointer; }
+  button.ghost { background: transparent; color: var(--teal); border: 1px solid var(--teal); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .8rem; }
+  .stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); padding: .8rem .9rem; }
+  .stat .n { font-size: 1.6rem; font-family: var(--mono); }
+  .stat .l { color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; }
+  .finding { border-left: 3px solid var(--line); background: var(--panel-2); border-radius: 0 8px 8px 0; padding: .7rem .85rem; margin: .55rem 0; }
+  .finding.critical { border-left-color: var(--coral); }
+  .finding.warning { border-left-color: var(--gold); }
+  .finding.info { border-left-color: var(--teal); }
+  .finding .meta { font-family: var(--mono); font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; display: flex; gap: .6rem; }
+  .tag { font-family: var(--mono); font-size: .7rem; padding: .05rem .4rem; border-radius: 5px; border: 1px solid var(--line); }
+  .tag.critical { color: var(--coral); border-color: var(--coral); }
+  .tag.warning { color: var(--gold); border-color: var(--gold); }
+  .tag.info { color: var(--teal); border-color: var(--teal); }
+  code, .mono { font-family: var(--mono); }
+  .corr { font-family: var(--mono); font-size: .8rem; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: .5rem .7rem; margin: .4rem 0; }
+  .corr b { color: var(--coral); }
+  .repo-line { display: flex; justify-content: space-between; align-items: center; gap: .8rem; border: 1px solid var(--line); border-radius: 8px; padding: .55rem .75rem; margin: .4rem 0; background: var(--panel-2); }
+  .empty { color: var(--muted); font-style: italic; padding: .6rem 0; }
+  .token { word-break: break-all; font-family: var(--mono); font-size: .72rem; background: var(--bg); border: 1px dashed var(--gold); border-radius: 8px; padding: .55rem; margin-top: .5rem; color: var(--gold); }
+  .status { font-family: var(--mono); font-size: .75rem; color: var(--muted); }
+  .status.err { color: var(--coral); }
+  @media (prefers-reduced-motion: no-preference) { .pulse { animation: p 2s ease-in-out infinite; } @keyframes p { 50% { opacity: .55; } } }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1><span class="mark">⌗</span> Git Forensics — Case File</h1>
+    <div class="sub">adversarial index-corruption &amp; staged-replacement investigation</div>
+  </div>
+  <div class="status" id="status" aria-live="polite">not connected</div>
+</header>
+
+<fieldset>
+  <legend>Connection</legend>
+  <div class="grid">
+    <div><label for="url">Worker URL</label><input id="url" placeholder="https://git-forensics-agent.you.workers.dev" autocomplete="off" /></div>
+    <div><label for="case">Case ID</label><input id="case" placeholder="incident-2026-06-22" autocomplete="off" /></div>
+    <div><label for="token">Ingest bearer</label><input id="token" type="password" placeholder="INGEST_TOKEN" autocomplete="off" /></div>
+  </div>
+  <div class="row" style="margin-top:.8rem">
+    <button id="connect">Connect &amp; poll</button>
+    <button class="ghost" id="stop" disabled>Stop</button>
+  </div>
+</fieldset>
+
+<section class="stats" id="stats" hidden>
+  <div class="stat"><div class="n" id="s-repos">0</div><div class="l">Repos</div></div>
+  <div class="stat"><div class="n" id="s-ev">0</div><div class="l">Evidence</div></div>
+  <div class="stat"><div class="n" id="s-missing">0</div><div class="l">Missing blobs</div></div>
+  <div class="stat"><div class="n" id="s-crit">0</div><div class="l">Critical</div></div>
+</section>
+
+<fieldset id="corr-box" hidden>
+  <legend>Cross-repo correlation</legend>
+  <div id="corr"></div>
+</fieldset>
+
+<fieldset id="findings-box" hidden>
+  <legend>Findings</legend>
+  <div id="findings"></div>
+</fieldset>
+
+<fieldset id="repair-box" hidden>
+  <legend>Repair gate — evidence-gated</legend>
+  <p class="status">Authorization is granted only when an evidence snapshot exists for the repo. The agent cannot run git; execute the returned token with <code>forensic-collect repair</code> on the host, after an explicit operator confirm.</p>
+  <div id="repos"></div>
+</fieldset>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let timer = null;
+  const sev = (s) => s === "critical" ? "critical" : s === "warning" ? "warning" : "info";
+
+  function cfg() {
+    return {
+      url: $("url").value.trim().replace(/\/$/, ""),
+      caseId: $("case").value.trim(),
+      token: $("token").value,
+    };
+  }
+  function base() { const c = cfg(); return `${c.url}/agents/forensic-case-agent/${encodeURIComponent(c.caseId)}`; }
+
+  async function api(path, opts = {}) {
+    const c = cfg();
+    const res = await fetch(base() + path, {
+      ...opts,
+      headers: { authorization: `Bearer ${c.token}`, "content-type": "application/json", ...(opts.headers || {}) },
+    });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    return res.json();
+  }
+
+  function setStatus(msg, err = false) {
+    const el = $("status");
+    el.textContent = msg;
+    el.className = "status" + (err ? " err" : "");
+  }
+
+  function render(s) {
+    $("stats").hidden = false;
+    $("s-repos").textContent = s.repos.length;
+    $("s-ev").textContent = s.evidenceCount;
+    $("s-missing").textContent = s.missingBlobHashes.length;
+    $("s-crit").textContent = s.findings.filter((f) => f.severity === "critical").length;
+
+    const corr = s.correlated.filter((c) => c.repos.length > 1);
+    $("corr-box").hidden = corr.length === 0;
+    $("corr").innerHTML = corr.map((c) =>
+      `<div class="corr"><b>${c.hash.slice(0, 16)}…</b> seen missing in ${c.repos.length} repos: ${c.repos.map(esc).join(", ")}</div>`
+    ).join("");
+
+    $("findings-box").hidden = s.findings.length === 0;
+    $("findings").innerHTML = s.findings.length ? s.findings.map((f) =>
+      `<div class="finding ${sev(f.severity)}">
+        <div class="meta"><span class="tag ${sev(f.severity)}">${f.severity}</span><span>${esc(f.kind)}</span>${f.repo ? `<span>${esc(f.repo)}</span>` : ""}</div>
+        <div>${esc(f.detail)}</div>
+      </div>`).join("") : `<div class="empty">No findings.</div>`;
+
+    $("repair-box").hidden = s.repos.length === 0;
+    $("repos").innerHTML = s.repos.map((r) => {
+      const auth = s.repairAuthorized[r];
+      return `<div class="repo-line">
+        <span class="mono">${esc(r)}</span>
+        ${auth ? `<span class="tag warning">authorized · exp ${new Date(auth.exp).toLocaleTimeString()}</span>`
+               : `<button class="ghost" data-repo="${esc(r)}">Authorize repair</button>`}
+      </div>${auth ? "" : `<div id="tok-${cssId(r)}"></div>`}`;
+    }).join("");
+
+    document.querySelectorAll("[data-repo]").forEach((b) =>
+      b.addEventListener("click", () => authorize(b.dataset.repo)));
+  }
+
+  async function authorize(repo) {
+    try {
+      const r = await api("/authorize-repair", { method: "POST", body: JSON.stringify({ repo }) });
+      const el = $("tok-" + cssId(repo));
+      if (el) el.innerHTML =
+        `<div class="token">authorization token (expires ${new Date(r.exp).toLocaleTimeString()}):<br>${esc(r.token)}
+         <br><br>run on host → <code>forensic-collect repair --case ${esc(cfg().caseId)} --url ${esc(cfg().url)} --token … --repo /path/to/${esc(repo)}</code></div>`;
+      refresh();
+    } catch (e) { setStatus("authorize failed: " + e.message, true); }
+  }
+
+  async function refresh() {
+    try {
+      const s = await api("/summary");
+      render(s);
+      setStatus(`connected · case ${s.caseId || cfg().caseId} · updated ${new Date().toLocaleTimeString()}`);
+    } catch (e) { setStatus("poll error: " + e.message, true); }
+  }
+
+  $("connect").addEventListener("click", () => {
+    if (!cfg().url || !cfg().caseId || !cfg().token) { setStatus("fill url, case, token", true); return; }
+    sessionStorage.setItem("gfa", JSON.stringify(cfg()));
+    $("connect").disabled = true; $("stop").disabled = false; $("status").classList.add("pulse");
+    refresh();
+    timer = setInterval(refresh, 5000);
+  });
+  $("stop").addEventListener("click", () => {
+    clearInterval(timer); timer = null;
+    $("connect").disabled = false; $("stop").disabled = true; $("status").classList.remove("pulse");
+    setStatus("stopped");
+  });
+
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const cssId = (s) => String(s).replace(/[^a-z0-9]/gi, "_");
+
+  // restore last session (not the token unless the user re-enters it)
+  try {
+    const saved = JSON.parse(sessionStorage.getItem("gfa") || "{}");
+    if (saved.url) $("url").value = saved.url;
+    if (saved.caseId) $("case").value = saved.caseId;
+    if (saved.token) $("token").value = saved.token;
+  } catch {}
+</script>
+</body>
+</html>

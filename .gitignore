@@ -1,0 +1,20 @@
+# dependencies
+node_modules/
+
+# wrangler / cloudflare
+.wrangler/
+.dev.vars
+worker-configuration.d.ts
+.env
+
+# forensic collector — local secrets & evidence keys MUST never be committed
+*.key
+collector/.forensic-keys/
+collector/evidence-out/
+
+# os / editor
+.DS_Store
+*.log
+
+# test
+coverage/
