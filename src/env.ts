@@ -5,8 +5,9 @@
  * editing wrangler.jsonc.
  */
 export interface Env {
-  /** Durable Object namespace for ForensicCaseAgent. */
-  ForensicCase: DurableObjectNamespace;
+  /** Durable Object namespace — binding name matches class so the routed URL
+   *  segment is the documented `forensic-case-agent`. */
+  ForensicCaseAgent: DurableObjectNamespace;
   /** Static dashboard assets. */
   ASSETS: Fetcher;
   /** Bearer the local collector must present to submit evidence (secret). */
