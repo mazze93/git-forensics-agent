@@ -103,15 +103,13 @@ export class ForensicCaseAgent extends Agent<Env, CaseState> {
   // authorize a repair or rewrite findings). Server writes are additionally
   // checked for append-only monotonicity to catch our own bugs.
   // -------------------------------------------------------------------------
-  validateStateChange(next: CaseState, source: Connection | "server") {
+  validateStateChange(_next: CaseState, source: Connection | "server") {
+    // State is server-authoritative: a dashboard/client may read synced state
+    // but never mutate it (no client-side escalation to "repair authorized").
+    // Do NOT read this.state here — the getter re-enters during a write and
+    // recurses. Append-only integrity is enforced by insert-only SQL, not here.
     if (source !== "server") {
       throw new Error("Forensic state is server-authoritative; client mutations are rejected.");
-    }
-    if (next.evidenceCount < this.state.evidenceCount) {
-      throw new Error("evidenceCount must not decrease — evidence is append-only.");
-    }
-    if (next.repairsExecuted.length < this.state.repairsExecuted.length) {
-      throw new Error("repair audit log must not shrink.");
     }
   }
 
