@@ -10,7 +10,7 @@
 
   "durable_objects": {
     "bindings": [
-      { "name": "ForensicCase", "class_name": "ForensicCaseAgent" }
+      { "name": "ForensicCaseAgent", "class_name": "ForensicCaseAgent" }
     ]
   },
 
