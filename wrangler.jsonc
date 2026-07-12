@@ -5,7 +5,7 @@
   //   REPAIR_SIGNING_KEY  — HMAC key the agent uses to sign repair-authorization tokens
   "name": "git-forensics-agent",
   "main": "src/index.ts",
-  "compatibility_date": "2025-05-05",
+  "compatibility_date": "2026-07-11",
   "compatibility_flags": ["nodejs_compat"],
 
   "durable_objects": {
@@ -30,6 +30,7 @@
   },
 
   "observability": {
-    "enabled": true
+    "enabled": true,
+    "head_sampling_rate": 1
   }
 }

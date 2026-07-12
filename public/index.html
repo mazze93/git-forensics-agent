@@ -179,7 +179,7 @@
       const el = $("tok-" + cssId(repo));
       if (el) el.innerHTML =
         `<div class="token">authorization token (expires ${new Date(r.exp).toLocaleTimeString()}):<br>${esc(r.token)}
-         <br><br>run on host → <code>forensic-collect repair --case ${esc(cfg().caseId)} --url ${esc(cfg().url)} --token … --repo /path/to/${esc(repo)}</code></div>`;
+         <br><br>run on host → <code>forensic-collect repair --case ${esc(cfg().caseId)} --url ${esc(cfg().url)} --token-file /path/to/ingest.token --repo /path/to/${esc(repo)}</code></div>`;
       refresh();
     } catch (e) { setStatus("authorize failed: " + e.message, true); }
   }
@@ -194,7 +194,10 @@
 
   $("connect").addEventListener("click", () => {
     if (!cfg().url || !cfg().caseId || !cfg().token) { setStatus("fill url, case, token", true); return; }
-    sessionStorage.setItem("gfa", JSON.stringify(cfg()));
+    const { url, caseId } = cfg();
+    // Keep the bearer memory-only. Persisting it, even in sessionStorage,
+    // expands the exposure surface to any script executing in this origin.
+    sessionStorage.setItem("gfa", JSON.stringify({ url, caseId }));
     $("connect").disabled = true; $("stop").disabled = false; $("status").classList.add("pulse");
     refresh();
     timer = setInterval(refresh, 5000);
@@ -208,12 +211,11 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const cssId = (s) => String(s).replace(/[^a-z0-9]/gi, "_");
 
-  // restore last session (not the token unless the user re-enters it)
+  // Restore non-secret connection details only. The bearer is never stored.
   try {
     const saved = JSON.parse(sessionStorage.getItem("gfa") || "{}");
     if (saved.url) $("url").value = saved.url;
     if (saved.caseId) $("case").value = saved.caseId;
-    if (saved.token) $("token").value = saved.token;
   } catch {}
 </script>
 </body>

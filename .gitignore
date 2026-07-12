@@ -4,7 +4,6 @@ node_modules/
 # wrangler / cloudflare
 .wrangler/
 .dev.vars
-worker-configuration.d.ts
 .env
 
 # forensic collector — local secrets & evidence keys MUST never be committed

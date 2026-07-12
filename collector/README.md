@@ -34,7 +34,7 @@ content already uploaded is unrecoverable (which is the point).
 
 ### `scan`
 ```
-scan --case <id> --url <worker> --token <ingest> --repos a,b,c [--key <file|b64>] [--no-content]
+scan --case <id> --url <worker> --repos a,b,c [--key <file|b64>] [--no-content]
 ```
 Captures evidence for each repo, encrypts content locally, and POSTs the batch
 to `/ingest`. Without a key (or with `--no-content`) it uploads **metadata
@@ -42,7 +42,7 @@ only** and warns you.
 
 ### `repair`
 ```
-repair --case <id> --url <worker> --token <ingest> --repo <path>
+repair --case <id> --url <worker> --repo <path>
 ```
 1. Requests authorization (`/authorize-repair`). The agent refuses unless an
    evidence snapshot exists for that repo.
@@ -53,7 +53,7 @@ repair --case <id> --url <worker> --token <ingest> --repo <path>
 
 ### `decrypt`
 ```
-decrypt --case <id> --url <worker> --token <ingest> --id <evidenceId> --key <file|b64>
+decrypt --case <id> --url <worker> --id <evidenceId> --key <file|b64>
 ```
 Fetches the opaque sealed content for one evidence record and decrypts it
 **locally** with your key, so you can read a suspicious `CLAUDE.md` or staged
@@ -66,6 +66,13 @@ In priority order:
 2. `--key <base64url>` — the key inline
 3. `FORENSIC_CONTENT_KEY` environment variable
 
+## Bearer options
+
+In priority order:
+1. `--token-file <path>` — recommended for unattended runs; use mode `0600`
+2. `--token <value>` — legacy compatibility; may leak via history/process list
+3. `GFA_TOKEN` environment variable — recommended for interactive use
+
 ## Running it as a tripwire (optional)
 
 Schedule a periodic `scan` (cron / launchd / the always-on m3 node). The agent
@@ -76,7 +83,7 @@ identical whether a human runs `scan` once or a daemon posts on a schedule.
 ```cron
 # every 30 min, scan the sovereignty-stack repos into a rolling daily case
 */30 * * * * FORENSIC_CONTENT_KEY=… node /path/forensic-collect.mjs scan \
-  --case "tripwire-$(date +\%Y\%m\%d)" --url https://… --token "$INGEST_TOKEN" \
+  --case "tripwire-$(date +\%Y\%m\%d)" --url https://… --token-file ~/.forensic-agent/ingest.token \
   --repos ~/Code/praxis-aegis,~/Code/secure-pride,~/Code/context-synapse
 ```
 

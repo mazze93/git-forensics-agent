@@ -178,9 +178,10 @@ export class ForensicCaseAgent extends Agent<Env, CaseState> {
 
     this.recomputeState();
 
-    // (Re)arm the tripwire staleness check. One-shot, re-armed on each ingest,
-    // so a dormant case eventually stops scheduling — bounded resource use.
-    await this.schedule(STALE_WINDOW_MS / 1000, "staleCheck", {});
+    // Keep exactly one one-shot tripwire. Delayed schedules are not
+    // idempotent by default, so explicitly replace an older staleCheck rather
+    // than accumulating one schedule row per ingest.
+    await this.rearmStaleCheck();
 
     return json({ ok: true, accepted, evidenceCount: this.state.evidenceCount });
   }
@@ -189,8 +190,12 @@ export class ForensicCaseAgent extends Agent<Env, CaseState> {
   private recomputeState() {
     const rows = this.sql<EvidenceRow>`
       SELECT e.* FROM evidence e
-      JOIN (SELECT repo, MAX(captured_at) AS m FROM evidence GROUP BY repo) g
-        ON e.repo = g.repo AND e.captured_at = g.m`;
+      WHERE e.id = (
+        SELECT latest.id FROM evidence latest
+        WHERE latest.repo = e.repo
+        ORDER BY latest.captured_at DESC, latest.received_at DESC, latest.id DESC
+        LIMIT 1
+      )`;
 
     const latest: EvidenceSubmission[] = rows.map((r) => {
       const meta = JSON.parse(r.raw_meta) as EvidenceSubmission;
@@ -361,6 +366,16 @@ export class ForensicCaseAgent extends Agent<Env, CaseState> {
   }
 
   // ---- tripwire staleness check ------------------------------------------
+  private async rearmStaleCheck(): Promise<void> {
+    const schedules = await this.listSchedules({ type: "delayed" });
+    await Promise.all(
+      schedules
+        .filter((schedule) => schedule.callback === "staleCheck")
+        .map((schedule) => this.cancelSchedule(schedule.id)),
+    );
+    await this.schedule(STALE_WINDOW_MS / 1000, "staleCheck", {});
+  }
+
   async staleCheck(_payload: unknown, _schedule: Schedule<unknown>) {
     const last = this.state.lastIngestAt ?? 0;
     if (Date.now() - last < STALE_WINDOW_MS) return; // fresh enough

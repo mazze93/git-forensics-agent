@@ -1,7 +1,7 @@
 {
   "extends": "agents/tsconfig",
   "compilerOptions": {
-    "types": ["@cloudflare/workers-types"],
+    "types": ["node"],
     "paths": { "~/*": ["./src/*"] },
     "noUnusedLocals": true,
     "noUnusedParameters": true,

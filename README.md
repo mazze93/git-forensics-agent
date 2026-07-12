@@ -90,7 +90,7 @@ correlate on fingerprints we can verify but cannot read your code."**
 
 ```bash
 npm install
-npm run cf-typegen           # optional: generate worker-configuration.d.ts
+npm run cf-typegen           # rerun after changing wrangler.jsonc
 
 # secrets (use strong random values)
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"  # x2
@@ -112,12 +112,17 @@ export FORENSIC_CONTENT_KEY="…"        # or --key ~/.forensic-agent/content.ke
 ### 3. Scan repos into a case
 
 ```bash
+export GFA_TOKEN="$INGEST_TOKEN"
 node collector/forensic-collect.mjs scan \
   --case incident-2026-06-22 \
   --url https://git-forensics-agent.you.workers.dev \
-  --token "$INGEST_TOKEN" \
   --repos ~/Code/praxis-aegis,~/Code/context-synapse,~/Code/secure-pride
 ```
+
+Set `GFA_TOKEN` in the environment for interactive use, or pass
+`--token-file /path/to/0600-token-file` for unattended collectors. The legacy
+`--token` option remains available, but putting a bearer on the command line
+can expose it through shell history and process listings.
 
 ### 4. Watch the case
 
@@ -129,7 +134,7 @@ the repair gate.
 
 ```bash
 node collector/forensic-collect.mjs repair \
-  --case incident-2026-06-22 --url … --token "$INGEST_TOKEN" \
+  --case incident-2026-06-22 --url … \
   --repo ~/Code/secure-pride
 # → fetches authorization, asks you to type 'yes', runs `git read-tree HEAD`,
 #   records the confirmed repair in the immutable audit log.
@@ -139,7 +144,7 @@ node collector/forensic-collect.mjs repair \
 
 ```bash
 node collector/forensic-collect.mjs decrypt \
-  --case incident-2026-06-22 --url … --token "$INGEST_TOKEN" \
+  --case incident-2026-06-22 --url … \
   --id ev_… --key ~/.forensic-agent/content.key
 ```
 
@@ -148,6 +153,7 @@ node collector/forensic-collect.mjs decrypt \
 ## Develop & test
 
 ```bash
+npm run check         # typecheck + tests
 npm run typecheck     # tsc --noEmit
 npm test              # vitest — pure analysis core (parsers, correlation, drift)
 npm run dev           # wrangler dev
