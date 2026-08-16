@@ -4,6 +4,7 @@
   "description": "Zero-knowledge forensic case-file agent for adversarial git index corruption and staged-replacement incidents. Cloudflare Agents SDK (Durable Object) + local read-only collector.",
   "type": "module",
   "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
